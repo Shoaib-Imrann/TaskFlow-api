@@ -2,7 +2,7 @@ from fastapi import HTTPException, Header
 import jwt
 import os
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 
 def verify_token(authorization: str = Header(None)):

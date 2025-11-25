@@ -14,5 +14,6 @@ class TaskDB(Base):
     status = Column(String, default="pending")
     priority = Column(String, default="medium")
     dueDate = Column(String, nullable=True)
+    parent_task_id = Column(String, nullable=True)
     createdAt = Column(DateTime, default=datetime.now)
     updatedAt = Column(DateTime, default=datetime.now, onupdate=datetime.now)

@@ -9,6 +9,7 @@ class TaskCreate(BaseModel):
     status: Literal["pending", "in-progress", "completed"] = "pending"
     priority: Literal["low", "medium", "high"] = "medium"
     dueDate: Optional[str] = None
+    parent_task_id: Optional[str] = None
     
     @validator('title')
     def title_not_empty(cls, v):
@@ -36,6 +37,7 @@ class TaskUpdate(BaseModel):
     status: Optional[Literal["pending", "in-progress", "completed"]] = None
     priority: Optional[Literal["low", "medium", "high"]] = None
     dueDate: Optional[str] = None
+    parent_task_id: Optional[str] = None
     
     @validator('title')
     def title_not_empty(cls, v):
@@ -64,6 +66,7 @@ class Task(BaseModel):
     status: str
     priority: str
     dueDate: Optional[str] = None
+    parent_task_id: Optional[str] = None
     createdAt: datetime
     updatedAt: datetime
     

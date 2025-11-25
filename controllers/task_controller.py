@@ -6,6 +6,7 @@ from models.task_db import TaskDB
 from database import get_db
 from datetime import datetime
 import uuid
+from controllers.ai_controller import AIController
 
 class TaskController:
     @staticmethod
@@ -125,6 +126,7 @@ class TaskController:
         db.add(db_task)
         db.commit()
         db.refresh(db_task)
+        AIController.invalidate_cache(user_id)
         return Task.from_orm(db_task)
     
     @staticmethod
@@ -134,12 +136,31 @@ class TaskController:
             raise HTTPException(status_code=404, detail="Task not found")
         
         update_data = task_updates.model_dump(exclude_unset=True)
+        
+        # Check if trying to mark task as completed
+        if update_data.get('status') == 'completed':
+            # Check if task has subtasks
+            subtasks = db.query(TaskDB).filter(
+                TaskDB.parent_task_id == task_id,
+                TaskDB.user_id == user_id
+            ).all()
+            
+            if subtasks:
+                # Check if all subtasks are completed
+                incomplete_subtasks = [st for st in subtasks if st.status != 'completed']
+                if incomplete_subtasks:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"{len(incomplete_subtasks)} subtask(s) in it are still pending."
+                    )
+        
         for field, value in update_data.items():
             setattr(task, field, value)
         
         task.updatedAt = datetime.now()
         db.commit()
         db.refresh(task)
+        AIController.invalidate_cache(user_id)
         return Task.from_orm(task)
     
     @staticmethod
@@ -150,6 +171,7 @@ class TaskController:
         
         db.delete(task)
         db.commit()
+        AIController.invalidate_cache(user_id)
         return True
     
     @staticmethod

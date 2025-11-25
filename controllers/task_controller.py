@@ -10,10 +10,11 @@ import uuid
 class TaskController:
     @staticmethod
     def get_stats(user_id: str, db: Session = Depends(get_db)) -> dict:
-        total = db.query(TaskDB).filter(TaskDB.user_id == user_id).count()
-        completed = db.query(TaskDB).filter(TaskDB.user_id == user_id, TaskDB.status == "completed").count()
-        pending = db.query(TaskDB).filter(TaskDB.user_id == user_id, TaskDB.status == "pending").count()
-        in_progress = db.query(TaskDB).filter(TaskDB.user_id == user_id, TaskDB.status == "in-progress").count()
+        # Only count parent tasks (exclude subtasks)
+        total = db.query(TaskDB).filter(TaskDB.user_id == user_id, TaskDB.parent_task_id == None).count()
+        completed = db.query(TaskDB).filter(TaskDB.user_id == user_id, TaskDB.parent_task_id == None, TaskDB.status == "completed").count()
+        pending = db.query(TaskDB).filter(TaskDB.user_id == user_id, TaskDB.parent_task_id == None, TaskDB.status == "pending").count()
+        in_progress = db.query(TaskDB).filter(TaskDB.user_id == user_id, TaskDB.parent_task_id == None, TaskDB.status == "in-progress").count()
         
         return {
             "total": total,
@@ -34,7 +35,11 @@ class TaskController:
         page: int = 1,
         limit: int = 12
     ) -> dict:
-        query = db.query(TaskDB).filter(TaskDB.user_id == user_id)
+        # Only get parent tasks (exclude subtasks)
+        query = db.query(TaskDB).filter(
+            TaskDB.user_id == user_id,
+            TaskDB.parent_task_id == None
+        )
         
         # Search filter
         if search:
@@ -113,6 +118,7 @@ class TaskController:
             status=task_data.status,
             priority=task_data.priority,
             dueDate=task_data.dueDate,
+            parent_task_id=task_data.parent_task_id,
             createdAt=datetime.now(),
             updatedAt=datetime.now()
         )
@@ -145,3 +151,18 @@ class TaskController:
         db.delete(task)
         db.commit()
         return True
+    
+    @staticmethod
+    def get_subtasks(parent_task_id: str, user_id: str, db: Session = Depends(get_db)) -> List[Task]:
+        # Verify parent task exists and belongs to user
+        parent_task = db.query(TaskDB).filter(TaskDB.id == parent_task_id, TaskDB.user_id == user_id).first()
+        if not parent_task:
+            raise HTTPException(status_code=404, detail="Parent task not found")
+        
+        # Get all subtasks
+        subtasks = db.query(TaskDB).filter(
+            TaskDB.parent_task_id == parent_task_id,
+            TaskDB.user_id == user_id
+        ).order_by(TaskDB.createdAt.desc()).all()
+        
+        return [Task.from_orm(subtask) for subtask in subtasks]

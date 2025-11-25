@@ -44,3 +44,7 @@ async def update_task(task_id: str, task_updates: TaskUpdate, db: Session = Depe
 async def delete_task(task_id: str, db: Session = Depends(get_db), user=Depends(verify_token)):
     TaskController.delete_task(task_id, user["user_id"], db)
     return {"message": "Task deleted successfully"}
+
+@router.get("/tasks/{task_id}/subtasks", response_model=List[Task])
+async def get_subtasks(task_id: str, db: Session = Depends(get_db), user=Depends(verify_token)):
+    return TaskController.get_subtasks(task_id, user["user_id"], db)
